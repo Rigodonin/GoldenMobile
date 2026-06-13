@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final usuarioTrim = _usuarioController.text.trim().toLowerCase();
       final emailSimulado = '$usuarioTrim@gs.com';
 
-      // Autenticación formal en Supabase para validar las políticas RLS
+      // Autenticación formal en Supabase
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: emailSimulado,
         password: _passwordController.text.trim(),
@@ -36,8 +36,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.user != null) {
         if (!mounted) return;
         
-        // Direccionamiento según el usuario logueado
-        if (usuarioTrim == 'supervisor2026') {
+        // 🛠️ CAMBIO: Traemos el rol desde tu tabla 'usuarios' en la base de datos
+        final datosUsuario = await Supabase.instance.client
+            .from('perfiles') // ⚠️ Asegúrate de que así se llame tu tabla en Supabase
+            .select('rol')
+            .eq('id', response.user!.id)
+            .single();
+
+        final String rol = datosUsuario['rol'] ?? 'operador';
+        
+        // Direccionamiento seguro según el rol
+        if (rol.trim().toLowerCase() == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin');
         } else {
           Navigator.pushReplacementNamed(context, '/operador');
