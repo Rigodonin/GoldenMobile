@@ -1,8 +1,7 @@
 class CalculadoraProduccion {
-  // Variable estática para que pueda ser modificada desde los ajustes del admin
-  static double metaPorHora = 1380 / 9; // Aprox 153.33 metros/hora
+  // Meta por hora que se puede ajustar desde Admin
+  static double metaPorHora = 1380 / 9; // Aprox 153.33
 
-  // 1. Determina las fechas de inicio y fin de la quincena actual
   static Map<String, DateTime> obtenerRangoQuincenaActual() {
     final hoy = DateTime.now();
     DateTime inicio;
@@ -18,69 +17,48 @@ class CalculadoraProduccion {
     return {'inicio': inicio, 'fin': fin};
   }
 
-  // 2. Calcula las horas exactas laborables con soporte para días personalizados
-  static double calcularHorasQuincena(String turno, {int? diasLV, int? diasSabado}) {
-    // Si el operador configuró sus días manualmente
-    if (diasLV != null) {
-      double horasTotales = diasLV * (turno == 'C' ? 9.0 : 7.5);
-      if (diasSabado != null) {
-        if (turno == 'A') horasTotales += diasSabado * 7.5;
-        if (turno == 'B') horasTotales += diasSabado * 5.5;
-      }
-      return horasTotales;
-    }
-
-    // Cálculo automático original basado en el calendario
-    final rango = obtenerRangoQuincenaActual();
-    DateTime fechaActual = rango['inicio']!;
-    DateTime fechaFin = rango['fin']!;
-    
-    double horasTotales = 0.0;
-
-    while (fechaActual.isBefore(fechaFin) || fechaActual.isAtSameMomentAs(fechaFin)) {
-      int diaSemana = fechaActual.weekday;
-      switch (turno) {
-        case 'A':
-          if (diaSemana >= 1 && diaSemana <= 6) horasTotales += 7.5;
-          break;
-        case 'B':
-          if (diaSemana >= 1 && diaSemana <= 5) {
-            horasTotales += 7.5;
-          } else if (diaSemana == 6) {
-            horasTotales += 5.5;
-          }
-          break;
-        case 'C':
-          if (diaSemana >= 1 && diaSemana <= 5) horasTotales += 9.0;
-          break;
-      }
-      fechaActual = fechaActual.add(const Duration(days: 1));
-    }
-    return horasTotales;
-  }
-
-  // 3. Obtiene la meta final de metros para la quincena completa
-  static double calcularMetaQuincenalMetros(String turno, {int? diasLV, int? diasSabado}) {
-    double horasQuincena = calcularHorasQuincena(turno, diasLV: diasLV, diasSabado: diasSabado);
-    return horasQuincena * metaPorHora;
-  }
-
-  // 4. NUEVO: Obtiene la meta diaria dependiendo del turno y el día de la semana
+  // META DIARIA: MetaHora * 4 máquinas * horas de ese día según turno
   static double calcularMetaDiariaMetros(String turno, DateTime fecha) {
-    int diaSemana = fecha.weekday; // 1 = Lunes, 6 = Sábado, 7 = Domingo
+    int diaSemana = fecha.weekday; // 1=Lunes, 6=Sábado
+    double horasDia = 0.0;
 
     switch (turno) {
       case 'A':
-        if (diaSemana >= 1 && diaSemana <= 6) return 7.5 * metaPorHora;
+        if (diaSemana >= 1 && diaSemana <= 6) horasDia = 7.5;
         break;
       case 'B':
-        if (diaSemana >= 1 && diaSemana <= 5) return 7.5 * metaPorHora;
-        if (diaSemana == 6) return 5.5 * metaPorHora;
+        if (diaSemana >= 1 && diaSemana <= 5) horasDia = 7.5;
+        if (diaSemana == 6) horasDia = 5.5;
         break;
       case 'C':
-        if (diaSemana >= 1 && diaSemana <= 5) return 9.0 * metaPorHora;
+        if (diaSemana >= 1 && diaSemana <= 5) horasDia = 9.0;
         break;
     }
-    return 0.0; // Domingos o días no laborales
+    return metaPorHora * 4 * horasDia; // Multiplicado por 4 telares
+  }
+
+  // META TOTAL QUINCENAL (Contempla configuración manual de días)
+  static double calcularMetaQuincenalMetros(String turno, {int? diasLV, int? diasSabado}) {
+    double metaTotal = 0.0;
+
+    if (diasLV != null) {
+      double horasLV = turno == 'C' ? 9.0 : 7.5;
+      metaTotal += (metaPorHora * 4 * horasLV) * diasLV;
+      
+      if (diasSabado != null) {
+        double horasSab = turno == 'A' ? 7.5 : (turno == 'B' ? 5.5 : 0.0);
+        metaTotal += (metaPorHora * 4 * horasSab) * diasSabado;
+      }
+      return metaTotal;
+    }
+
+    // Automático por calendario
+    final rango = obtenerRangoQuincenaActual();
+    DateTime actual = rango['inicio']!;
+    while (actual.isBefore(rango['fin']!) || actual.isAtSameMomentAs(rango['fin']!)) {
+      metaTotal += calcularMetaDiariaMetros(turno, actual);
+      actual = actual.add(const Duration(days: 1));
+    }
+    return metaTotal;
   }
 }

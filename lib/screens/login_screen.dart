@@ -14,12 +14,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _autenticar() async {
-    // Hack temporal para pruebas rápidas
-    if (_usuarioController.text.trim() == 'rigodonin') {
-      Navigator.pushReplacementNamed(context, '/admin');
-      return;
-    }
-
     if (_usuarioController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor completa todos los campos'), backgroundColor: Colors.orange),
@@ -30,43 +24,28 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final emailSimulado = '${_usuarioController.text.trim().toLowerCase()}@gs.com';
+      final usuarioTrim = _usuarioController.text.trim().toLowerCase();
+      final emailSimulado = '$usuarioTrim@gs.com';
 
-      // 1. Intentar iniciar sesión
+      // Autenticación formal en Supabase para validar las políticas RLS
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: emailSimulado,
         password: _passwordController.text.trim(),
       );
 
       if (response.user != null) {
-        // 2. Consultar perfil con .maybeSingle() para evitar que la app truene
-        final perfil = await Supabase.instance.client
-            .from('perfiles')
-            .select('rol')
-            .eq('id', response.user!.id)
-            .maybeSingle();
-
         if (!mounted) return;
-
-        // 3. Si no hay perfil, es un error de configuración de la BD o RLS
-        if (perfil == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error: No se encontró perfil. Verifica permisos RLS.'), backgroundColor: Colors.red),
-          );
+        
+        // Direccionamiento según el usuario logueado
+        if (usuarioTrim == 'supervisor2026') {
+          Navigator.pushReplacementNamed(context, '/admin');
         } else {
-          // 4. Redirección según rol
-          if (perfil['rol'] == 'admin') {
-            Navigator.pushReplacementNamed(context, '/admin');
-          } else {
-            Navigator.pushReplacementNamed(context, '/operador');
-          }
+          Navigator.pushReplacementNamed(context, '/operador');
         }
       }
     } catch (e) {
-      if (!mounted) return;
-      print('🚨 ERROR REAL DE SUPABASE: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: Usuario o contraseña incorrectos'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error de autenticación: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -86,9 +65,16 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Text('GS', style: TextStyle(fontSize: 54, fontWeight: FontWeight.bold, color: Color(0xFF1E2265), letterSpacing: 2)),
                 const SizedBox(height: 48),
-                TextField(controller: _usuarioController, decoration: const InputDecoration(labelText: 'Usuario / Nómina', border: OutlineInputBorder())),
+                TextField(
+                  controller: _usuarioController, 
+                  decoration: const InputDecoration(labelText: 'Usuario / Nómina', border: OutlineInputBorder())
+                ),
                 const SizedBox(height: 20),
-                TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña', border: OutlineInputBorder())),
+                TextField(
+                  controller: _passwordController, 
+                  obscureText: true, 
+                  decoration: const InputDecoration(labelText: 'Contraseña', border: OutlineInputBorder())
+                ),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
