@@ -12,7 +12,7 @@ void main() async {
 
   await Supabase.initialize(
     url: 'https://dczxzkvlomzuqnbmmect.supabase.co',
-    anonKey: 'sb_publishable_XCE3n1G-dLBmTPFLVlgsQQ_JscHgiuj',
+    publishableKey: 'sb_publishable_XCE3n1G-dLBmTPFLVlgsQQ_JscHgiuj',
   );
 
   runApp(const MyApp());

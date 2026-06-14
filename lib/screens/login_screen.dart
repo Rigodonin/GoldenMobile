@@ -13,6 +13,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  @override
+  void dispose() {
+    _usuarioController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _autenticar() async {
     if (_usuarioController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -46,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final String rol = datosUsuario['rol'] ?? 'operador';
         
         // Direccionamiento seguro según el rol
+        if (!mounted) return;
         if (rol.trim().toLowerCase() == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin');
         } else {
@@ -53,6 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error de autenticación: $e'), backgroundColor: Colors.red),
       );

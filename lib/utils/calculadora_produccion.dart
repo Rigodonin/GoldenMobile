@@ -49,15 +49,16 @@ class CalculadoraProduccion {
         double horasSab = turno == 'A' ? 7.5 : (turno == 'B' ? 5.5 : 0.0);
         metaTotal += (metaPorHora * 4 * horasSab) * diasSabado;
       }
-      return metaTotal;
-    }
-
-    // Automático por calendario
-    final rango = obtenerRangoQuincenaActual();
-    DateTime actual = rango['inicio']!;
-    while (actual.isBefore(rango['fin']!) || actual.isAtSameMomentAs(rango['fin']!)) {
-      metaTotal += calcularMetaDiariaMetros(turno, actual);
-      actual = actual.add(const Duration(days: 1));
+    } else {
+      // Cálculo automático si no hay días manuales
+      final rango = obtenerRangoQuincenaActual();
+      DateTime current = rango['inicio']!;
+      DateTime fin = rango['fin']!;
+      
+      while (!current.isAfter(fin)) {
+        metaTotal += calcularMetaDiariaMetros(turno, current);
+        current = current.add(const Duration(days: 1));
+      }
     }
     return metaTotal;
   }

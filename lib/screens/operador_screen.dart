@@ -16,12 +16,13 @@ class _OperadorScreenState extends State<OperadorScreen> {
   String _nombreOperador = 'Cargando...';
   String _turnoLaboral = 'A';
   
+  // Aquí está la variable que causaba el error rojo bien declarada
   double _metrosTotalesQuincena = 0.0;
   double _metaQuincenaTotal = 0.0;
-  double _metaRitmoActual = 0.0; // La meta sumada solo de los días que ya trabajó
+  double _metaRitmoActual = 0.0; 
   
   DateTime _fechaSeleccionada = DateTime.now();
-  String? _idRegistroEditando; // Para saber si estamos editando
+  String? _idRegistroEditando; 
   List<dynamic> _historialQuincena = [];
   bool _isLoading = true;
 
@@ -34,194 +35,390 @@ class _OperadorScreenState extends State<OperadorScreen> {
     _cargarDatosOperador();
   }
 
+  @override
+  void dispose() {
+    _notasController.dispose();
+    for (final controller in _telarControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _cargarDatosOperador() async {
     setState(() => _isLoading = true);
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-
     try {
-      final perfil = await Supabase.instance.client.from('perfiles').select().eq('id', user.id).single();
-      _nombreOperador = perfil['nombre_completo'];
-      _turnoLaboral = perfil['turno_laboral'] ?? 'A';
-      
-      _metaQuincenaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(_turnoLaboral, diasLV: _diasLVManuales, diasSabado: _diasSabadoManuales);
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
 
-      final rango = CalculadoraProduccion.obtenerRangoQuincenaActual();
-      
-      // TRAER SOLO LOS NO ARCHIVADOS (o donde archivado sea null/false)
-      final historial = await Supabase.instance.client
-          .from('registros_produccion')
-          .select()
-          .eq('operador_id', user.id)
-          .gte('fecha', rango['inicio']!.toIso8601String().split('T')[0])
-          .lte('fecha', rango['fin']!.toIso8601String().split('T')[0])
-          .isFilter('archivado', false) // MAGIA PARA OCULTAR ARCHIVADOS
-          .order('fecha', ascending: false);
+      final perfil = await Supabase.instance.client
+          .from('perfiles')
+          .select('nombre_completo, turno_laboral')
+          .eq('id', user.id)
+          .single();
 
-      double acumulado = 0;
-      double ritmoTarget = 0;
+      if (!mounted) return;
+      setState(() {
+        _nombreOperador = perfil['nombre_completo'] ?? 'Operador';
+        _turnoLaboral = perfil['turno_laboral'] ?? 'A';
+      });
 
-      for (var reg in historial) {
-        // Sumar metros reales
-        acumulado += (reg['t1_metros'] ?? 0) + (reg['t2_metros'] ?? 0) + (reg['t3_metros'] ?? 0) + (reg['t4_metros'] ?? 0);
-        
-        // Sumar la meta ideal de ESE DÍA específico para calcular el Ritmo
-        DateTime fechaReg = DateTime.parse(reg['fecha']);
-        ritmoTarget += CalculadoraProduccion.calcularMetaDiariaMetros(_turnoLaboral, fechaReg);
-      }
-
-      if (mounted) {
-        setState(() {
-          _historialQuincena = historial;
-          _metrosTotalesQuincena = acumulado;
-          _metaRitmoActual = ritmoTarget;
-          _isLoading = false;
-        });
-      }
+      await _cargarHistorial();
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint("Error cargando operador: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _cargarRegistroParaEditar(Map<String, dynamic> reg) {
+  Future<void> _cargarHistorial() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final rangos = CalculadoraProduccion.obtenerRangoQuincenaActual();
+    final inicio = "${rangos['inicio']!.year}-${rangos['inicio']!.month.toString().padLeft(2, '0')}-${rangos['inicio']!.day.toString().padLeft(2, '0')}";
+    final fin = "${rangos['fin']!.year}-${rangos['fin']!.month.toString().padLeft(2, '0')}-${rangos['fin']!.day.toString().padLeft(2, '0')}";
+
+    final response = await Supabase.instance.client
+        .from('registros_produccion')
+        .select()
+        .eq('operador_id', user.id)
+        .gte('fecha', inicio)
+        .lte('fecha', fin)
+        .order('fecha', ascending: false);
+
+    double sumatoria = 0;
+    for (var r in response) {
+      sumatoria += (r['t1_metros'] ?? 0) + (r['t2_metros'] ?? 0) + (r['t3_metros'] ?? 0) + (r['t4_metros'] ?? 0);
+    }
+
     setState(() {
-      _idRegistroEditando = reg['id'];
-      _fechaSeleccionada = DateTime.parse(reg['fecha']);
-      _telarControllers[0].text = reg['t1_metros'].toString();
-      _telarControllers[1].text = reg['t2_metros'].toString();
-      _telarControllers[2].text = reg['t3_metros'].toString();
-      _telarControllers[3].text = reg['t4_metros'].toString();
-      _notasController.text = reg['notas'] ?? '';
+      _historialQuincena = response;
+      _metrosTotalesQuincena = sumatoria; // El error ya no ocurrirá aquí
+      _calcularMetas();
     });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Editando registro seleccionado. Modifica y guarda.')));
+  }
+
+  void _calcularMetas() {
+    double metaRitmo = 0.0;
+    for (var r in _historialQuincena) {
+      DateTime f = DateTime.parse(r['fecha']);
+      metaRitmo += CalculadoraProduccion.calcularMetaDiariaMetros(_turnoLaboral, f);
+    }
+    
+    double metaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(
+      _turnoLaboral, 
+      diasLV: _diasLVManuales, 
+      diasSabado: _diasSabadoManuales
+    );
+
+    setState(() {
+      _metaRitmoActual = metaRitmo;
+      _metaQuincenaTotal = metaTotal;
+    });
+  }
+
+  double _calcularPorcentaje(double avance, double meta) {
+    if (meta <= 0) return 0;
+    return (avance / meta).clamp(0.0, 1.0);
+  }
+
+  String _metrosEnteros(dynamic valor) {
+    final numero = valor is num ? valor.toDouble() : double.tryParse(valor?.toString() ?? '') ?? 0;
+    return numero.round().toString();
+  }
+
+  Widget _buildBarraProgreso({
+    required String titulo,
+    required double avance,
+    required double meta,
+    required Color color,
+  }) {
+    final porcentaje = _calcularPorcentaje(avance, meta);
+    final porcentajeTexto = (porcentaje * 100).round().toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text('$porcentajeTexto%', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: porcentaje,
+            minHeight: 10,
+            backgroundColor: Colors.white,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${_metrosEnteros(avance)}m / ${_metrosEnteros(meta)}m',
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+
+  String _fechaSeleccionadaTexto() {
+    return "${_fechaSeleccionada.year}-${_fechaSeleccionada.month.toString().padLeft(2, '0')}-${_fechaSeleccionada.day.toString().padLeft(2, '0')}";
+  }
+
+  Map<String, dynamic> _datosRegistroActual(String operadorId, String fecha) {
+    return {
+      'operador_id': operadorId,
+      'fecha': fecha,
+      't1_metros': double.tryParse(_telarControllers[0].text) ?? 0,
+      't2_metros': double.tryParse(_telarControllers[1].text) ?? 0,
+      't3_metros': double.tryParse(_telarControllers[2].text) ?? 0,
+      't4_metros': double.tryParse(_telarControllers[3].text) ?? 0,
+      'notas': _notasController.text,
+    };
+  }
+
+  Future<dynamic> _buscarRegistroEnFecha(String operadorId, String fecha) async {
+    final response = await Supabase.instance.client
+        .from('registros_produccion')
+        .select()
+        .eq('operador_id', operadorId)
+        .eq('fecha', fecha)
+        .limit(1);
+
+    if (response.isEmpty) return null;
+    return response.first;
+  }
+
+  Future<String?> _mostrarOpcionesRegistroExistente(String fecha) {
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.warning_amber, color: Colors.orange),
+                title: const Text('Ya existe un registro'),
+                subtitle: Text('Ya tienes produccion guardada para $fecha'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: const Text('Reemplazar'),
+                subtitle: const Text('Sobrescribir el registro de esa fecha'),
+                onTap: () => Navigator.pop(sheetContext, 'reemplazar'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.calendar_month),
+                title: const Text('Editar fecha'),
+                subtitle: const Text('Elegir otro dia para este registro'),
+                onTap: () => Navigator.pop(sheetContext, 'editar_fecha'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Cancelar'),
+                onTap: () => Navigator.pop(sheetContext, 'cancelar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _guardarRegistro() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final fecha = _fechaSeleccionadaTexto();
+    final datos = _datosRegistroActual(user.id, fecha);
+
+    try {
+      final registroExistente = await _buscarRegistroEnFecha(user.id, fecha);
+      final idExistente = registroExistente?['id']?.toString();
+      final esElMismoRegistro = _idRegistroEditando != null && idExistente == _idRegistroEditando;
+
+      if (registroExistente != null && !esElMismoRegistro) {
+        if (!mounted) return;
+        final opcion = await _mostrarOpcionesRegistroExistente(fecha);
+
+        if (opcion == 'reemplazar') {
+          await Supabase.instance.client
+              .from('registros_produccion')
+              .update(datos)
+              .eq('id', registroExistente['id']);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro reemplazado correctamente')));
+        } else if (opcion == 'editar_fecha') {
+          if (!mounted) return;
+          await _seleccionarFechaUI();
+          return;
+        } else {
+          return;
+        }
+      } else if (_idRegistroEditando != null) {
+        await Supabase.instance.client
+            .from('registros_produccion')
+            .update(datos)
+            .eq('id', _idRegistroEditando!);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro actualizado correctamente')));
+      } else {
+        await Supabase.instance.client
+            .from('registros_produccion')
+            .insert(datos);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro guardado correctamente')));
+      }
+
+      _limpiarFormulario();
+      await _cargarHistorial();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    await Supabase.instance.client.auth.signOut();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  }
+
+  void _cargarRegistroParaEditar(dynamic r) {
+    setState(() {
+      _idRegistroEditando = r['id']?.toString();
+      _fechaSeleccionada = DateTime.parse(r['fecha']);
+      _telarControllers[0].text = _metrosEnteros(r['t1_metros']);
+      _telarControllers[1].text = _metrosEnteros(r['t2_metros']);
+      _telarControllers[2].text = _metrosEnteros(r['t3_metros']);
+      _telarControllers[3].text = _metrosEnteros(r['t4_metros']);
+      _notasController.text = r['notas'] ?? '';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Registro cargado para editar')),
+    );
   }
 
   void _limpiarFormulario() {
     setState(() {
       _idRegistroEditando = null;
       _fechaSeleccionada = DateTime.now();
-      for (var ctrl in _telarControllers) { ctrl.clear(); }
+      for (var c in _telarControllers) { c.clear(); }
       _notasController.clear();
     });
   }
-
-  Future<void> _verificarYGuardar() async {
-    final fechaStr = _fechaSeleccionada.toString().split(' ')[0];
-    
-    // Si NO estamos editando, revisamos si ya hay un registro con esta fecha en la pantalla
-    if (_idRegistroEditando == null) {
-      bool existe = _historialQuincena.any((reg) => reg['fecha'] == fechaStr);
-      if (existe) {
-        _mostrarAlertaSobreescritura(fechaStr);
-        return;
-      }
-    }
-    await _ejecutarGuardadoDB();
-  }
-
-  void _mostrarAlertaSobreescritura(String fechaStr) {
-    showDialog(
+  
+  Future<void> _seleccionarFechaUI() async {
+    final DateTime? picked = await showDatePicker(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¡Advertencia!', style: TextStyle(color: Colors.orange)),
-        content: Text('Ya tienes un registro guardado para la fecha $fechaStr.\n\nPara modificarlo, mejor búscalo en el historial de abajo y tócalo para editarlo.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido')),
-        ],
-      )
+      initialDate: _fechaSeleccionada,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
     );
-  }
-
-  Future<void> _ejecutarGuardadoDB() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    final datos = {
-      'operador_id': user!.id,
-      'fecha': _fechaSeleccionada.toString().split(' ')[0],
-      't1_metros': double.tryParse(_telarControllers[0].text) ?? 0.0,
-      't2_metros': double.tryParse(_telarControllers[1].text) ?? 0.0,
-      't3_metros': double.tryParse(_telarControllers[2].text) ?? 0.0,
-      't4_metros': double.tryParse(_telarControllers[3].text) ?? 0.0,
-      'notas': _notasController.text.trim(),
-      'archivado': false // Por si acaso
-    };
-
-    try {
-      if (_idRegistroEditando != null) {
-        await Supabase.instance.client.from('registros_produccion').update(datos).eq('id', _idRegistroEditando!);
-      } else {
-        await Supabase.instance.client.from('registros_produccion').insert(datos);
-      }
-      _limpiarFormulario();
-      _cargarDatosOperador();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado exitosamente'), backgroundColor: Colors.green));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-    }
-  }
-
-  Future<void> _archivarQuincena() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    setState(() => _isLoading = true);
-    try {
-      // 1. Guardar en historial
-      await Supabase.instance.client.from('historial_quincenas').insert({
-        'operador_id': user!.id, 'fecha_cierre': DateTime.now().toIso8601String().split('T')[0],
-        'periodo': 'Cierre Manual', 'total_metros': _metrosTotalesQuincena
+    if (picked != null && picked != _fechaSeleccionada) {
+      setState(() {
+        _fechaSeleccionada = picked;
       });
-
-      // 2. Soft Delete: Marcar como archivados para que desaparezcan de la pantalla
-      final rango = CalculadoraProduccion.obtenerRangoQuincenaActual();
-      await Supabase.instance.client.from('registros_produccion')
-          .update({'archivado': true})
-          .eq('operador_id', user.id)
-          .gte('fecha', rango['inicio']!.toIso8601String().split('T')[0])
-          .lte('fecha', rango['fin']!.toIso8601String().split('T')[0]);
-
-      // 3. Limpiar estado local
-      _limpiarFormulario();
-      _cargarDatosOperador();
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Asegúrate de agregar la columna "archivado" (boolean) en Supabase. Error: $e'), backgroundColor: Colors.red));
     }
   }
 
-  void _mostrarConfigDias() {
-    final cLV = TextEditingController(text: _diasLVManuales?.toString() ?? '');
-    final cS = TextEditingController(text: _diasSabadoManuales?.toString() ?? '');
-    showDialog(
+  Future<void> _mostrarConfiguracionMeta() async {
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Días Laborales'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: cLV, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Días Lunes a Viernes')),
-            if (_turnoLaboral != 'C') TextField(controller: cS, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Días Sábado')),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Configurar meta'),
+          content: _buildCamposDiasLaborales(),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Listo'),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () { setState(() { _diasLVManuales = null; _diasSabadoManuales = null; }); _cargarDatosOperador(); Navigator.pop(context); }, child: const Text('Restablecer Auto')),
-          ElevatedButton(onPressed: () { setState(() { _diasLVManuales = int.tryParse(cLV.text); _diasSabadoManuales = int.tryParse(cS.text); }); _cargarDatosOperador(); Navigator.pop(context); }, child: const Text('Guardar')),
-        ],
-      )
+        );
+      },
     );
+  }
+
+  Widget _buildCamposDiasLaborales() {
+    if (_turnoLaboral == 'A' || _turnoLaboral == 'C') {
+      return TextFormField(
+        initialValue: _diasLVManuales?.toString() ?? '',
+        decoration: const InputDecoration(labelText: 'Días laborados totales (Quincena)', border: OutlineInputBorder()),
+        keyboardType: TextInputType.number,
+        onChanged: (val) {
+          setState(() {
+            _diasLVManuales = int.tryParse(val);
+            _diasSabadoManuales = 0; 
+            _calcularMetas();
+          });
+        },
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              initialValue: _diasLVManuales?.toString() ?? '',
+              decoration: const InputDecoration(labelText: 'Días L-V', border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+              onChanged: (val) {
+                setState(() {
+                  _diasLVManuales = int.tryParse(val);
+                  _calcularMetas();
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextFormField(
+              initialValue: _diasSabadoManuales?.toString() ?? '',
+              decoration: const InputDecoration(labelText: 'Días Sábado', border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+              onChanged: (val) {
+                setState(() {
+                  _diasSabadoManuales = int.tryParse(val);
+                  _calcularMetas();
+                });
+              },
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-    double pctQuincena = _metaQuincenaTotal > 0 ? (_metrosTotalesQuincena / _metaQuincenaTotal) : 0;
-    double pctRitmo = _metaRitmoActual > 0 ? (_metrosTotalesQuincena / _metaRitmoActual) : 0;
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF1E2265))));
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Producción: $_nombreOperador', style: const TextStyle(fontSize: 16, color: Colors.white)),
+        title: Text('Hola, $_nombreOperador (Turno $_turnoLaboral)', style: const TextStyle(color: Colors.white, fontSize: 18)),
         backgroundColor: const Color(0xFF1E2265),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(icon: const Icon(Icons.settings, color: Colors.white), onPressed: _mostrarConfigDias),
-          IconButton(icon: const Icon(Icons.logout, color: Colors.white), onPressed: () async { await Supabase.instance.client.auth.signOut(); if(mounted) Navigator.pushReplacementNamed(context, '/'); }),
+          IconButton(
+            tooltip: 'Configurar meta',
+            onPressed: _mostrarConfiguracionMeta,
+            icon: const Icon(Icons.settings),
+          ),
+          IconButton(
+            tooltip: 'Cerrar sesion',
+            onPressed: _cerrarSesion,
+            icon: const Icon(Icons.logout),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -229,83 +426,73 @@ class _OperadorScreenState extends State<OperadorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // BARRA 1: META TOTAL DE LA QUINCENA
-            Container(
-              padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Progreso Quincena Total', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${_metrosTotalesQuincena.toInt()} / ${_metaQuincenaTotal.toInt()} m', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('${(pctQuincena * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 18, color: Color(0xFF1E2265), fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(value: pctQuincena.clamp(0.0, 1.0), backgroundColor: Colors.grey.shade200, color: const Color(0xFF1E2265), minHeight: 8),
-                ],
+            Card(
+              color: const Color(0xFFDBDBF0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text('Tu Meta Calculada: ${_metaQuincenaTotal.toStringAsFixed(1)}m', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 14),
+                    _buildBarraProgreso(
+                      titulo: 'Progreso de quincena',
+                      avance: _metrosTotalesQuincena,
+                      meta: _metaQuincenaTotal,
+                      color: const Color(0xFF1E2265),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildBarraProgreso(
+                      titulo: 'Ritmo actual',
+                      avance: _metrosTotalesQuincena,
+                      meta: _metaRitmoActual,
+                      color: Colors.green,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            
-            // BARRA 2: RITMO (Basado en registros capturados)
-            Container(
-              padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFE8F5E9), border: Border.all(color: Colors.green.shade300), borderRadius: BorderRadius.circular(8)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Ritmo de Trabajo (Según días laborados)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${_metrosTotalesQuincena.toInt()} / ${_metaRitmoActual.toInt()} m', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('${(pctRitmo * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(value: pctRitmo.clamp(0.0, 1.0), backgroundColor: Colors.white, color: Colors.green, minHeight: 8),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // FORMULARIO
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Captura de Metros', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                if (_idRegistroEditando != null)
-                  TextButton.icon(onPressed: _limpiarFormulario, icon: const Icon(Icons.cancel, color: Colors.red), label: const Text('Cancelar Edición', style: TextStyle(color: Colors.red))),
+                Text('Fecha: ${_fechaSeleccionada.day}/${_fechaSeleccionada.month}/${_fechaSeleccionada.year}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                TextButton.icon(onPressed: _seleccionarFechaUI, icon: const Icon(Icons.calendar_month), label: const Text('Cambiar')),
               ],
             ),
-            InkWell(
-              onTap: () async {
-                final d = await showDatePicker(context: context, initialDate: _fechaSeleccionada, firstDate: DateTime(2024), lastDate: DateTime.now());
-                if(d != null) setState(() => _fechaSeleccionada = d);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Fecha: ${_fechaSeleccionada.toString().split(' ')[0]}', style: const TextStyle(fontWeight: FontWeight.bold)), const Icon(Icons.calendar_month)]),
-              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: _telarControllers[0], decoration: const InputDecoration(labelText: 'T-01 (m)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(child: TextField(controller: _telarControllers[1], decoration: const InputDecoration(labelText: 'T-02 (m)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              ],
             ),
-            const SizedBox(height: 12),
-            ...List.generate(4, (i) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(children: [SizedBox(width: 60, child: Text('Telar ${i+1}:')), Expanded(child: TextField(controller: _telarControllers[i], keyboardType: TextInputType.number, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true)))]),
-            )),
-            TextField(controller: _notasController, decoration: const InputDecoration(labelText: 'Notas', border: OutlineInputBorder())),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: _telarControllers[2], decoration: const InputDecoration(labelText: 'T-03 (m)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(child: TextField(controller: _telarControllers[3], decoration: const InputDecoration(labelText: 'T-04 (m)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(controller: _notasController, decoration: const InputDecoration(labelText: 'Notas / Observaciones', border: OutlineInputBorder())),
             const SizedBox(height: 16),
             SizedBox(
-              width: double.infinity, height: 50,
-              child: ElevatedButton.icon(onPressed: _verificarYGuardar, icon: const Icon(Icons.save), label: Text(_idRegistroEditando != null ? 'Actualizar Registro' : 'Guardar Nuevo Registro'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E2265), foregroundColor: Colors.white)),
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _guardarRegistro,
+                icon: const Icon(Icons.save),
+                label: Text(_idRegistroEditando == null ? 'Guardar Producción' : 'Actualizar Registro'),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E2265), foregroundColor: Colors.white),
+              ),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity, height: 50,
-              child: OutlinedButton.icon(onPressed: _archivarQuincena, icon: const Icon(Icons.archive), label: const Text('Archivar y Limpiar Quincena'), style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red))),
-            ),
+            if (_idRegistroEditando != null)
+              TextButton(
+                onPressed: _limpiarFormulario,
+                child: const Text('Cancelar Edición', style: TextStyle(color: Colors.red)),
+              ),
             
             const Divider(height: 40),
             const Text('Historial Activo (Toca para editar)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -313,21 +500,32 @@ class _OperadorScreenState extends State<OperadorScreen> {
             _historialQuincena.isEmpty 
               ? const Text('Pantalla limpia. Inicia tus registros.') 
               : ListView.builder(
-                  shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: _historialQuincena.length,
+                  shrinkWrap: true, 
+                  physics: const NeverScrollableScrollPhysics(), 
+                  itemCount: _historialQuincena.length,
                   itemBuilder: (ctx, i) {
                     final h = _historialQuincena[i];
                     final total = (h['t1_metros']??0)+(h['t2_metros']??0)+(h['t3_metros']??0)+(h['t4_metros']??0);
+                    final estaEditando = _idRegistroEditando == h['id']?.toString();
+
                     return Card(
-                      color: _idRegistroEditando == h['id'] ? Colors.yellow.shade100 : Colors.white,
+                      color: estaEditando ? Colors.yellow.shade100 : Colors.white,
                       child: ListTile(
                         onTap: () => _cargarRegistroParaEditar(h),
                         title: Text('Fecha: ${h['fecha']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('T1:${h['t1_metros']} T2:${h['t2_metros']} T3:${h['t3_metros']} T4:${h['t4_metros']}'),
-                        trailing: Text('${total.toInt()}m', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E2265))),
+                        subtitle: Text('T1:${_metrosEnteros(h['t1_metros'])} T2:${_metrosEnteros(h['t2_metros'])} T3:${_metrosEnteros(h['t3_metros'])} T4:${_metrosEnteros(h['t4_metros'])}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${_metrosEnteros(total)}m', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E2265))),
+                            const SizedBox(width: 8),
+                            Icon(estaEditando ? Icons.edit_note : Icons.edit, color: const Color(0xFF1E2265)),
+                          ],
+                        ),
                       ),
                     );
-                  }
-                )
+                  },
+                ),
           ],
         ),
       ),
