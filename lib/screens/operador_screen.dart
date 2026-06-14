@@ -16,7 +16,6 @@ class _OperadorScreenState extends State<OperadorScreen> {
   String _nombreOperador = 'Cargando...';
   String _turnoLaboral = 'A';
   
-  // Aquí está la variable que causaba el error rojo bien declarada
   double _metrosTotalesQuincena = 0.0;
   double _metaQuincenaTotal = 0.0;
   double _metaRitmoActual = 0.0; 
@@ -62,6 +61,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
         _turnoLaboral = perfil['turno_laboral'] ?? 'A';
       });
 
+      await _archivarQuincenaAnteriorSiHaceFalta(user.id);
       await _cargarHistorial();
     } catch (e) {
       debugPrint("Error cargando operador: $e");
@@ -93,10 +93,82 @@ class _OperadorScreenState extends State<OperadorScreen> {
       sumatoria += (r['t1_metros'] ?? 0) + (r['t2_metros'] ?? 0) + (r['t3_metros'] ?? 0) + (r['t4_metros'] ?? 0);
     }
 
+    if (!mounted) return;
     setState(() {
       _historialQuincena = response;
-      _metrosTotalesQuincena = sumatoria; // El error ya no ocurrirá aquí
+      _metrosTotalesQuincena = sumatoria; 
       _calcularMetas();
+    });
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    return "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}";
+  }
+
+  Map<String, DateTime> _obtenerRangoQuincenaAnterior() {
+    final hoy = DateTime.now();
+
+    if (hoy.day <= 15) {
+      final mesAnterior = DateTime(hoy.year, hoy.month, 0);
+      return {
+        'inicio': DateTime(mesAnterior.year, mesAnterior.month, 16),
+        'fin': mesAnterior,
+      };
+    }
+
+    return {
+      'inicio': DateTime(hoy.year, hoy.month, 1),
+      'fin': DateTime(hoy.year, hoy.month, 15),
+    };
+  }
+
+  Future<void> _archivarQuincenaAnteriorSiHaceFalta(String operadorId) async {
+    final rango = _obtenerRangoQuincenaAnterior();
+    final inicio = _formatearFecha(rango['inicio']!);
+    final fin = _formatearFecha(rango['fin']!);
+    final periodo = '$inicio al $fin';
+
+    final historialExistente = await Supabase.instance.client
+        .from('historial_quincenas')
+        .select('id')
+        .eq('operador_id', operadorId)
+        .eq('periodo', periodo)
+        .maybeSingle();
+
+    if (historialExistente != null) return;
+
+    final registros = await Supabase.instance.client
+        .from('registros_produccion')
+        .select('t1_metros, t2_metros, t3_metros, t4_metros')
+        .eq('operador_id', operadorId)
+        .gte('fecha', inicio)
+        .lte('fecha', fin);
+
+    if (registros.isEmpty) return;
+
+    double totalMetros = 0;
+    for (final registro in registros) {
+      totalMetros += (registro['t1_metros'] ?? 0) +
+          (registro['t2_metros'] ?? 0) +
+          (registro['t3_metros'] ?? 0) +
+          (registro['t4_metros'] ?? 0);
+    }
+
+    double metaMetros = 0;
+    DateTime dia = rango['inicio']!;
+    while (!dia.isAfter(rango['fin']!)) {
+      metaMetros += CalculadoraProduccion.calcularMetaDiariaMetros(_turnoLaboral, dia);
+      dia = dia.add(const Duration(days: 1));
+    }
+    final porcentajeCumplido = metaMetros <= 0 ? 0 : (totalMetros / metaMetros) * 100;
+
+    await Supabase.instance.client.from('historial_quincenas').insert({
+      'operador_id': operadorId,
+      'fecha_cierre': _formatearFecha(DateTime.now()),
+      'periodo': periodo,
+      'total_metros': totalMetros,
+      'meta_metros': metaMetros,
+      'porcentaje_cumplido': porcentajeCumplido,
     });
   }
 
@@ -107,10 +179,11 @@ class _OperadorScreenState extends State<OperadorScreen> {
       metaRitmo += CalculadoraProduccion.calcularMetaDiariaMetros(_turnoLaboral, f);
     }
     
+    // Ajustado a los parámetros definidos en CalculadoraProduccion
     double metaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(
-      _turnoLaboral, 
-      diasLV: _diasLVManuales, 
-      diasSabado: _diasSabadoManuales
+      _turnoLaboral,
+      diasLV: _diasLVManuales,
+      diasSabado: _diasSabadoManuales,
     );
 
     setState(() {
@@ -179,57 +252,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
       't2_metros': double.tryParse(_telarControllers[1].text) ?? 0,
       't3_metros': double.tryParse(_telarControllers[2].text) ?? 0,
       't4_metros': double.tryParse(_telarControllers[3].text) ?? 0,
-      'notas': _notasController.text,
+      'notas': _notasController.text, // Mantenido fiel a tu columna de Supabase
     };
-  }
-
-  Future<dynamic> _buscarRegistroEnFecha(String operadorId, String fecha) async {
-    final response = await Supabase.instance.client
-        .from('registros_produccion')
-        .select()
-        .eq('operador_id', operadorId)
-        .eq('fecha', fecha)
-        .limit(1);
-
-    if (response.isEmpty) return null;
-    return response.first;
-  }
-
-  Future<String?> _mostrarOpcionesRegistroExistente(String fecha) {
-    return showModalBottomSheet<String>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.warning_amber, color: Colors.orange),
-                title: const Text('Ya existe un registro'),
-                subtitle: Text('Ya tienes produccion guardada para $fecha'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.swap_horiz),
-                title: const Text('Reemplazar'),
-                subtitle: const Text('Sobrescribir el registro de esa fecha'),
-                onTap: () => Navigator.pop(sheetContext, 'reemplazar'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.calendar_month),
-                title: const Text('Editar fecha'),
-                subtitle: const Text('Elegir otro dia para este registro'),
-                onTap: () => Navigator.pop(sheetContext, 'editar_fecha'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.close),
-                title: const Text('Cancelar'),
-                onTap: () => Navigator.pop(sheetContext, 'cancelar'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _guardarRegistro() async {
@@ -240,7 +264,13 @@ class _OperadorScreenState extends State<OperadorScreen> {
     final datos = _datosRegistroActual(user.id, fecha);
 
     try {
-      final registroExistente = await _buscarRegistroEnFecha(user.id, fecha);
+      final response = await Supabase.instance.client
+          .from('registros_produccion')
+          .select()
+          .eq('operador_id', user.id)
+          .eq('fecha', fecha);
+
+      final registroExistente = response.isEmpty ? null : response.first;
       final idExistente = registroExistente?['id']?.toString();
       final esElMismoRegistro = _idRegistroEditando != null && idExistente == _idRegistroEditando;
 
@@ -253,10 +283,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
               .from('registros_produccion')
               .update(datos)
               .eq('id', registroExistente['id']);
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro reemplazado correctamente')));
+          _mostrarSnack('Registro reemplazado correctamente');
         } else if (opcion == 'editar_fecha') {
-          if (!mounted) return;
           await _seleccionarFechaUI();
           return;
         } else {
@@ -267,22 +295,24 @@ class _OperadorScreenState extends State<OperadorScreen> {
             .from('registros_produccion')
             .update(datos)
             .eq('id', _idRegistroEditando!);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro actualizado correctamente')));
+        _mostrarSnack('Registro actualizado correctamente');
       } else {
         await Supabase.instance.client
             .from('registros_produccion')
             .insert(datos);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro guardado correctamente')));
+        _mostrarSnack('Registro guardado correctamente');
       }
 
       _limpiarFormulario();
       await _cargarHistorial();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+      _mostrarSnack('Error al guardar: $e');
     }
+  }
+
+  void _mostrarSnack(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   Future<void> _cerrarSesion() async {
@@ -301,10 +331,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
       _telarControllers[3].text = _metrosEnteros(r['t4_metros']);
       _notasController.text = r['notas'] ?? '';
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Registro cargado para editar')),
-    );
+    _mostrarSnack('Registro cargado para editar');
   }
 
   void _limpiarFormulario() {
@@ -397,6 +424,43 @@ class _OperadorScreenState extends State<OperadorScreen> {
     }
   }
 
+  Future<String?> _mostrarOpcionesRegistroExistente(String fecha) {
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.warning_amber, color: Colors.orange),
+                title: const Text('Ya existe un registro'),
+                subtitle: Text('Ya tienes produccion guardada para $fecha'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: const Text('Reemplazar'),
+                subtitle: const Text('Sobrescribir el registro de esa fecha'),
+                onTap: () => Navigator.pop(sheetContext, 'reemplazar'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.calendar_month),
+                title: const Text('Editar fecha'),
+                subtitle: const Text('Elegir otro dia para este registro'),
+                onTap: () => Navigator.pop(sheetContext, 'editar_fecha'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Cancelar'),
+                onTap: () => Navigator.pop(sheetContext, 'cancelar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -409,6 +473,11 @@ class _OperadorScreenState extends State<OperadorScreen> {
         backgroundColor: const Color(0xFF1E2265),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            tooltip: 'Historial de Quincenas',
+            onPressed: () => Navigator.pushNamed(context, '/historial'),
+            icon: const Icon(Icons.history),
+          ),
           IconButton(
             tooltip: 'Configurar meta',
             onPressed: _mostrarConfiguracionMeta,
@@ -493,7 +562,6 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 onPressed: _limpiarFormulario,
                 child: const Text('Cancelar Edición', style: TextStyle(color: Colors.red)),
               ),
-            
             const Divider(height: 40),
             const Text('Historial Activo (Toca para editar)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
