@@ -1,6 +1,6 @@
 {
-    "name": "produccion_app",
-    "short_name": "produccion_app",
+    "name": "GoldenMobil",
+    "short_name": "GoldenMobil",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
