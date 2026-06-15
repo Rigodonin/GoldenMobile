@@ -179,13 +179,11 @@ class _OperadorScreenState extends State<OperadorScreen> {
       metaRitmo += CalculadoraProduccion.calcularMetaDiariaMetros(_turnoLaboral, f);
     }
     
-    // Ajustado a los parámetros definidos en CalculadoraProduccion
-    double metaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(
-      _turnoLaboral,
-      diasLV: _diasLVManuales,
-      diasSabado: _diasSabadoManuales,
-    );
-
+      double metaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(
+        _turnoLaboral, 
+        diasAsuetoLV: _diasLVManuales, 
+        diasAsuetoSabado: _diasSabadoManuales,
+      );
     setState(() {
       _metaRitmoActual = metaRitmo;
       _metaQuincenaTotal = metaTotal;
@@ -362,7 +360,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Configurar meta'),
+          title: const Text('DIAS DE ASUETO'),
           content: _buildCamposDiasLaborales(),
           actions: [
             TextButton(
@@ -379,7 +377,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
     if (_turnoLaboral == 'A' || _turnoLaboral == 'C') {
       return TextFormField(
         initialValue: _diasLVManuales?.toString() ?? '',
-        decoration: const InputDecoration(labelText: 'Días laborados totales (Quincena)', border: OutlineInputBorder()),
+        decoration: const InputDecoration(labelText: 'Días de asueto totales', border: OutlineInputBorder()),
         keyboardType: TextInputType.number,
         onChanged: (val) {
           setState(() {
@@ -395,7 +393,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
           Expanded(
             child: TextFormField(
               initialValue: _diasLVManuales?.toString() ?? '',
-              decoration: const InputDecoration(labelText: 'Días L-V', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'L-V', border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               onChanged: (val) {
                 setState(() {
@@ -409,7 +407,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
           Expanded(
             child: TextFormField(
               initialValue: _diasSabadoManuales?.toString() ?? '',
-              decoration: const InputDecoration(labelText: 'Días Sábado', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Sábado', border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               onChanged: (val) {
                 setState(() {
@@ -501,7 +499,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text('Tu Meta Calculada: ${_metaQuincenaTotal.toStringAsFixed(1)}m', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('Tu Meta Es De: ${_metaQuincenaTotal.toStringAsFixed(0)}m', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 14),
                     _buildBarraProgreso(
                       titulo: 'Progreso de quincena',

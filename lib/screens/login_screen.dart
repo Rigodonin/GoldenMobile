@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 48),
                 TextField(
                   controller: _usuarioController, 
-                  decoration: const InputDecoration(labelText: 'Usuario / Nómina', border: OutlineInputBorder())
+                  decoration: const InputDecoration(labelText: 'Usuario', border: OutlineInputBorder())
                 ),
                 const SizedBox(height: 20),
                 TextField(

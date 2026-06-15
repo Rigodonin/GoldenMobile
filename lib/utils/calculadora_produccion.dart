@@ -37,29 +37,32 @@ class CalculadoraProduccion {
     return metaPorHora * 4 * horasDia; // Multiplicado por 4 telares
   }
 
-  // META TOTAL QUINCENAL (Contempla configuración manual de días)
-  static double calcularMetaQuincenalMetros(String turno, {int? diasLV, int? diasSabado}) {
+  // NUEVA LÓGICA: META TOTAL QUINCENAL AUTOMÁTICA MENOS DÍAS DE ASUETO
+  static double calcularMetaQuincenalMetros(String turno, {int? diasAsuetoLV, int? diasAsuetoSabado}) {
     double metaTotal = 0.0;
 
-    if (diasLV != null) {
-      double horasLV = turno == 'C' ? 9.0 : 7.5;
-      metaTotal += (metaPorHora * 4 * horasLV) * diasLV;
-      
-      if (diasSabado != null) {
-        double horasSab = turno == 'A' ? 7.5 : (turno == 'B' ? 5.5 : 0.0);
-        metaTotal += (metaPorHora * 4 * horasSab) * diasSabado;
-      }
-    } else {
-      // Cálculo automático si no hay días manuales
-      final rango = obtenerRangoQuincenaActual();
-      DateTime current = rango['inicio']!;
-      DateTime fin = rango['fin']!;
-      
-      while (!current.isAfter(fin)) {
-        metaTotal += calcularMetaDiariaMetros(turno, current);
-        current = current.add(const Duration(days: 1));
-      }
+    // 1. Cálculo automático base recorriendo todos los días calendario de la quincena actual
+    final rango = obtenerRangoQuincenaActual();
+    DateTime current = rango['inicio']!;
+    DateTime fin = rango['fin']!;
+    
+    while (!current.isAfter(fin)) {
+      metaTotal += calcularMetaDiariaMetros(turno, current);
+      current = current.add(const Duration(days: 1));
     }
-    return metaTotal;
+
+    // 2. Restar el valor de producción de los días de asueto según las horas de cada turno
+    double horasLV = turno == 'C' ? 9.0 : 7.5;
+    double horasSab = turno == 'A' ? 7.5 : (turno == 'B' ? 5.5 : 0.0);
+
+    if (diasAsuetoLV != null && diasAsuetoLV > 0) {
+      metaTotal -= (metaPorHora * 4 * horasLV) * diasAsuetoLV;
+    }
+    
+    if (diasAsuetoSabado != null && diasAsuetoSabado > 0) {
+      metaTotal -= (metaPorHora * 4 * horasSab) * diasAsuetoSabado;
+    }
+
+    return metaTotal < 0 ? 0.0 : metaTotal;
   }
 }
