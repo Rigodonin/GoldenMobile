@@ -1,6 +1,6 @@
 {
-    "name": "GoldenMobil",
-    "short_name": "GoldenMobil",
+    "name": "GoldenMobile",
+    "short_name": "GoldenMobile",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
