@@ -94855,7 +94855,7 @@ return"PostgrestException(message: "+s.a+", code: "+s.b+", details: "+A.j(s.c)+"
 $ibU:1}
 A.Oq.prototype={
 I(a){var s=A.wd(null,null,B.b4,B.Fj,!0)
-return new A.BF(A.a8(["/",new A.adG(),"/admin",new A.adH(),"/operador",new A.adI(),"/historial",new A.adJ(),"/perfil",new A.adK()],t.N,t.Ab),"/","Sistema de Producci\xf3n GS",s,!1,null)}}
+return new A.BF(A.a8(["/",new A.adG(),"/admin",new A.adH(),"/operador",new A.adI(),"/historial",new A.adJ(),"/perfil",new A.adK()],t.N,t.Ab),"/","GoldenMobile",s,!1,null)}}
 A.adG.prototype={
 $1(a){return new A.qh(null)},
 $S:602}
