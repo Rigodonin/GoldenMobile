@@ -30,6 +30,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
   bool _isLoading = true;
   bool _isLoadingRanking = false;
   String _turnoFiltroRanking = 'Todos';
+  String _periodoFiltroRanking = 'actual';
 
   int? _diasLVManuales;
   int? _diasSabadoManuales;
@@ -122,10 +123,11 @@ class _OperadorScreenState extends State<OperadorScreen> {
         .toDouble();
   }
 
-  double _calcularMetaRitmoQuincena(String turno) {
-    final rango = CalculadoraProduccion.obtenerRangoQuincenaActual();
-    final inicio = rango['inicio']!;
-    final fin = rango['fin']!;
+  double _calcularMetaRitmoQuincena(
+    String turno,
+    DateTime inicio,
+    DateTime fin,
+  ) {
     final hoy = DateTime.now();
     final limite = hoy.isAfter(fin) ? fin : hoy;
 
@@ -141,10 +143,75 @@ class _OperadorScreenState extends State<OperadorScreen> {
     return meta;
   }
 
+  String _clavePeriodoRanking(DateTime inicio, DateTime fin) {
+    return '${_formatearFecha(inicio)}|${_formatearFecha(fin)}';
+  }
+
+  Map<String, DateTime> _rangoDesdeClaveRanking(String clave) {
+    if (clave == 'actual') {
+      return CalculadoraProduccion.obtenerRangoQuincenaActual();
+    }
+
+    final partes = clave.split('|');
+    if (partes.length != 2) {
+      return CalculadoraProduccion.obtenerRangoQuincenaActual();
+    }
+
+    final inicio = DateTime.tryParse(partes[0]);
+    final fin = DateTime.tryParse(partes[1]);
+    if (inicio == null || fin == null) {
+      return CalculadoraProduccion.obtenerRangoQuincenaActual();
+    }
+
+    return {'inicio': inicio, 'fin': fin};
+  }
+
+  Map<String, DateTime> _quincenaAnteriorA(DateTime inicio) {
+    if (inicio.day == 16) {
+      return {
+        'inicio': DateTime(inicio.year, inicio.month, 1),
+        'fin': DateTime(inicio.year, inicio.month, 15),
+      };
+    }
+
+    final mesAnterior = DateTime(inicio.year, inicio.month, 0);
+    return {
+      'inicio': DateTime(mesAnterior.year, mesAnterior.month, 16),
+      'fin': mesAnterior,
+    };
+  }
+
+  String _fechaCorta(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+
+  List<Map<String, String>> _periodosRankingDisponibles() {
+    final actual = CalculadoraProduccion.obtenerRangoQuincenaActual();
+    final periodos = <Map<String, String>>[
+      {
+        'clave': 'actual',
+        'label':
+            'Actual (${_fechaCorta(actual['inicio']!)} - ${_fechaCorta(actual['fin']!)})',
+      },
+    ];
+
+    var rango = _quincenaAnteriorA(actual['inicio']!);
+    for (var i = 0; i < 6; i++) {
+      periodos.add({
+        'clave': _clavePeriodoRanking(rango['inicio']!, rango['fin']!),
+        'label':
+            '${_fechaCorta(rango['inicio']!)} - ${_fechaCorta(rango['fin']!)}',
+      });
+      rango = _quincenaAnteriorA(rango['inicio']!);
+    }
+
+    return periodos;
+  }
+
   Future<void> _cargarRankingQuincena() async {
     setState(() => _isLoadingRanking = true);
     try {
-      final rangos = CalculadoraProduccion.obtenerRangoQuincenaActual();
+      final rangos = _rangoDesdeClaveRanking(_periodoFiltroRanking);
       final inicio = _formatearFecha(rangos['inicio']!);
       final fin = _formatearFecha(rangos['fin']!);
 
@@ -170,7 +237,11 @@ class _OperadorScreenState extends State<OperadorScreen> {
       final ranking = agrupado.values.map((item) {
         final turno = item['turno']?.toString() ?? '-';
         final total = item['total'] as double;
-        final metaRitmo = _calcularMetaRitmoQuincena(turno);
+        final metaRitmo = _calcularMetaRitmoQuincena(
+          turno,
+          rangos['inicio']!,
+          rangos['fin']!,
+        );
         return {
           ...item,
           'metaRitmo': metaRitmo,
@@ -344,10 +415,6 @@ class _OperadorScreenState extends State<OperadorScreen> {
     );
   }
 
-  String _fechaSeleccionadaTexto() {
-    return "${_fechaSeleccionada.year}-${_fechaSeleccionada.month.toString().padLeft(2, '0')}-${_fechaSeleccionada.day.toString().padLeft(2, '0')}";
-  }
-
   Map<String, dynamic> _datosRegistroActual(String operadorId, String fecha) {
     return {
       'operador_id': operadorId,
@@ -364,7 +431,13 @@ class _OperadorScreenState extends State<OperadorScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    final fecha = _fechaSeleccionadaTexto();
+    final fechaElegida = await _seleccionarFechaParaGuardar();
+    if (fechaElegida == null) return;
+
+    if (!mounted) return;
+    setState(() => _fechaSeleccionada = fechaElegida);
+
+    final fecha = _formatearFecha(fechaElegida);
     final datos = _datosRegistroActual(user.id, fecha);
 
     try {
@@ -390,7 +463,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
               .eq('id', registroExistente['id']);
           _mostrarSnack('Registro reemplazado correctamente');
         } else if (opcion == 'editar_fecha') {
-          await _seleccionarFechaUI();
+          await _guardarRegistro();
           return;
         } else {
           return;
@@ -410,6 +483,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
 
       _limpiarFormulario();
       await _cargarHistorial();
+      _periodoFiltroRanking = 'actual';
       await _cargarRankingQuincena();
     } catch (e) {
       _mostrarSnack('Error al guardar: $e');
@@ -453,18 +527,13 @@ class _OperadorScreenState extends State<OperadorScreen> {
     });
   }
 
-  Future<void> _seleccionarFechaUI() async {
-    final DateTime? picked = await showDatePicker(
+  Future<DateTime?> _seleccionarFechaParaGuardar() {
+    return showDatePicker(
       context: context,
       initialDate: _fechaSeleccionada,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-    if (picked != null && picked != _fechaSeleccionada) {
-      setState(() {
-        _fechaSeleccionada = picked;
-      });
-    }
   }
 
   Future<void> _mostrarConfiguracionMeta() async {
@@ -510,6 +579,34 @@ class _OperadorScreenState extends State<OperadorScreen> {
           },
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildSelectorPeriodoRanking(StateSetter setStateDialog) {
+    final periodos = _periodosRankingDisponibles();
+
+    return DropdownButtonFormField<String>(
+      initialValue: _periodoFiltroRanking,
+      decoration: const InputDecoration(
+        labelText: 'Quincena',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.calendar_month),
+      ),
+      items: periodos
+          .map(
+            (periodo) => DropdownMenuItem<String>(
+              value: periodo['clave'],
+              child: Text(periodo['label'] ?? ''),
+            ),
+          )
+          .toList(),
+      onChanged: (valor) async {
+        if (valor == null) return;
+        setState(() => _periodoFiltroRanking = valor);
+        setStateDialog(() {});
+        await _cargarRankingQuincena();
+        if (mounted) setStateDialog(() {});
+      },
     );
   }
 
@@ -639,6 +736,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      _buildSelectorPeriodoRanking(setStateDialog),
                       const SizedBox(height: 12),
                       _buildFiltroRanking(setStateDialog),
                       const SizedBox(height: 12),
@@ -849,24 +948,6 @@ class _OperadorScreenState extends State<OperadorScreen> {
             ),
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Fecha: ${_fechaSeleccionada.day}/${_fechaSeleccionada.month}/${_fechaSeleccionada.year}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _seleccionarFechaUI,
-                  icon: const Icon(Icons.calendar_month),
-                  label: const Text('Cambiar'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
               children: [
                 Expanded(
                   child: TextField(
@@ -970,6 +1051,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                           (h['t2_metros'] ?? 0) +
                           (h['t3_metros'] ?? 0) +
                           (h['t4_metros'] ?? 0);
+                      final notas = (h['notas'] ?? '').toString().trim();
                       final estaEditando =
                           _idRegistroEditando == h['id']?.toString();
 
@@ -983,8 +1065,20 @@ class _OperadorScreenState extends State<OperadorScreen> {
                             'Fecha: ${h['fecha']}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text(
-                            'T1:${_metrosEnteros(h['t1_metros'])} T2:${_metrosEnteros(h['t2_metros'])} T3:${_metrosEnteros(h['t3_metros'])} T4:${_metrosEnteros(h['t4_metros'])}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'T1:${_metrosEnteros(h['t1_metros'])} T2:${_metrosEnteros(h['t2_metros'])} T3:${_metrosEnteros(h['t3_metros'])} T4:${_metrosEnteros(h['t4_metros'])}',
+                              ),
+                              if (notas.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Notas: $notas',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              ],
+                            ],
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
