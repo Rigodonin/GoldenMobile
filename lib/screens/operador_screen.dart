@@ -541,7 +541,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('DIAS DE ASUETO'),
+          title: const Text('DIAS DE ASUETO O VACACIONES'),
           content: _buildCamposDiasLaborales(),
           actions: [
             TextButton(
@@ -779,7 +779,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
       return TextFormField(
         initialValue: _diasLVManuales?.toString() ?? '',
         decoration: const InputDecoration(
-          labelText: 'Días de asueto totales',
+          labelText: 'Dias de asueto o vacaciones totales',
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.number,
@@ -953,7 +953,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                   child: TextField(
                     controller: _telarControllers[0],
                     decoration: const InputDecoration(
-                      labelText: 'T-01 (m)',
+                      labelText: 'Telar #1 (m)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -964,7 +964,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                   child: TextField(
                     controller: _telarControllers[1],
                     decoration: const InputDecoration(
-                      labelText: 'T-02 (m)',
+                      labelText: 'Telar #2 (m)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -979,7 +979,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                   child: TextField(
                     controller: _telarControllers[2],
                     decoration: const InputDecoration(
-                      labelText: 'T-03 (m)',
+                      labelText: 'Telar #3 (m)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -990,7 +990,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                   child: TextField(
                     controller: _telarControllers[3],
                     decoration: const InputDecoration(
-                      labelText: 'T-04 (m)',
+                      labelText: 'Telar #4 (m)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -1015,7 +1015,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 icon: const Icon(Icons.save),
                 label: Text(
                   _idRegistroEditando == null
-                      ? 'Guardar Producción'
+                      ? 'Guardar Producción del Día'
                       : 'Actualizar Registro',
                 ),
                 style: ElevatedButton.styleFrom(
