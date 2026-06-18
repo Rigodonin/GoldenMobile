@@ -1,4 +1,5 @@
 name: Flutter Web Build
+
 on:
   push:
     branches: [ main ]
@@ -11,11 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          
       - run: flutter pub get
+      
+      # Esta línea es la que crea la carpeta "build/web"
       - run: flutter build web --release --base-href "/GoldenMobile/"
+      
+      # ESTA ES LA PARTE QUE HACE EL DEPLOY
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
