@@ -1057,7 +1057,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[0],
-                    decoration: _decoracionCampo('Telar #1 (m)', Icons.speed),
+                    decoration: _decoracionCampo('Telar #100 (m)', Icons.speed),
                     keyboardType: TextInputType.number,
                   ),
                 ),
