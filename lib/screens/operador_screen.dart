@@ -1218,3 +1218,5 @@ class _OperadorScreenState extends State<OperadorScreen> {
     );
   }
 }
+
+//creo que ocn esto ya puedo hacer el commit, ya se que es un comentario tonto pero es para probar el commit de nuevo
