@@ -129,7 +129,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
     DateTime fin,
   ) {
     final hoy = DateTime.now();
-    final limite = hoy.isAfter(fin) ? fin : hoy;
+    final ayer = hoy.subtract(const Duration(days: 1));
+    final limite = ayer.isAfter(fin) ? fin : ayer;
 
     double meta = 0;
     DateTime dia = DateTime(inicio.year, inicio.month, inicio.day);
@@ -367,6 +368,30 @@ class _OperadorScreenState extends State<OperadorScreen> {
     return (avance / meta).clamp(0.0, 1.0);
   }
 
+  Color _colorPorcentaje(double porcentaje) {
+    if (porcentaje >= 80) return Colors.green;
+    if (porcentaje >= 70) return Colors.amber.shade700;
+    return Colors.redAccent;
+  }
+
+  InputDecoration _decoracionCampo(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: const Color(0xFF1E2265)),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFE2E0E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF1E2265), width: 1.4),
+      ),
+    );
+  }
+
   String _metrosEnteros(dynamic valor) {
     final numero = valor is num
         ? valor.toDouble()
@@ -392,7 +417,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
             Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
             Text(
               '$porcentajeTexto%',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -401,8 +426,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: porcentaje,
-            minHeight: 10,
-            backgroundColor: Colors.white,
+            minHeight: 11,
+            backgroundColor: const Color(0xFFEDECF4),
             color: color,
           ),
         ),
@@ -616,17 +641,26 @@ class _OperadorScreenState extends State<OperadorScreen> {
     final total = item['total'] as double;
     final porcentaje = item['porcentajeRitmo'] as double;
     final progreso = (porcentaje / 100).clamp(0.0, 1.0);
+    final colorPorcentaje = _colorPorcentaje(porcentaje);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE7E6F0)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 16,
+            radius: 17,
             backgroundColor: const Color(0xFF1E2265),
             foregroundColor: Colors.white,
-            child: Text('${index + 1}'),
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -638,9 +672,12 @@ class _OperadorScreenState extends State<OperadorScreen> {
                     Expanded(
                       child: Text(
                         nombre,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     Text(
@@ -652,21 +689,48 @@ class _OperadorScreenState extends State<OperadorScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Turno $turno - Ritmo ${porcentaje.toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDBDBF0),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Turno $turno',
+                        style: const TextStyle(
+                          color: Color(0xFF1E2265),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Ritmo ${porcentaje.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        color: colorPorcentaje,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: progreso,
                     minHeight: 9,
                     backgroundColor: const Color(0xFFE8E8F4),
-                    color: porcentaje >= 100
-                        ? Colors.green
-                        : const Color(0xFF1E2265),
+                    color: colorPorcentaje,
                   ),
                 ),
               ],
@@ -686,6 +750,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFFFAFAFD),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -702,6 +767,17 @@ class _OperadorScreenState extends State<OperadorScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD6D3E3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
                           Container(
@@ -732,7 +808,10 @@ class _OperadorScreenState extends State<OperadorScreen> {
                               await _cargarRankingQuincena();
                               if (mounted) setStateDialog(() {});
                             },
-                            icon: const Icon(Icons.refresh),
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: Color(0xFF1E2265),
+                            ),
                           ),
                         ],
                       ),
@@ -758,7 +837,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                             : ListView.separated(
                                 itemCount: ranking.length,
                                 separatorBuilder: (_, index) =>
-                                    const Divider(height: 1),
+                                    const SizedBox(height: 8),
                                 itemBuilder: (context, index) =>
                                     _buildItemRanking(ranking[index], index),
                               ),
@@ -880,12 +959,14 @@ class _OperadorScreenState extends State<OperadorScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: Text(
           'Hola, $_nombreOperador (Turno $_turnoLaboral)',
           style: const TextStyle(color: Colors.white, fontSize: 18),
         ),
         backgroundColor: const Color(0xFF1E2265),
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -916,17 +997,41 @@ class _OperadorScreenState extends State<OperadorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
-              color: const Color(0xFFDBDBF0),
+              elevation: 1,
+              color: const Color(0xFFFAFAFD),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: Color(0xFFE2E0E6)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text(
-                      'Tu Meta Es De: ${_metaQuincenaTotal.toStringAsFixed(0)}m',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDBDBF0),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.flag,
+                            color: Color(0xFF1E2265),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Tu Meta Es De: ${_metaQuincenaTotal.toStringAsFixed(0)}m',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
                     _buildBarraProgreso(
@@ -952,10 +1057,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[0],
-                    decoration: const InputDecoration(
-                      labelText: 'Telar #1 (m)',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: _decoracionCampo('Telar #1 (m)', Icons.speed),
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -963,10 +1065,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[1],
-                    decoration: const InputDecoration(
-                      labelText: 'Telar #2 (m)',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: _decoracionCampo('Telar #2 (m)', Icons.speed),
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -978,10 +1077,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[2],
-                    decoration: const InputDecoration(
-                      labelText: 'Telar #3 (m)',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: _decoracionCampo('Telar #3 (m)', Icons.speed),
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -989,10 +1085,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[3],
-                    decoration: const InputDecoration(
-                      labelText: 'Telar #4 (m)',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: _decoracionCampo('Telar #4 (m)', Icons.speed),
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -1001,9 +1094,9 @@ class _OperadorScreenState extends State<OperadorScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: _notasController,
-              decoration: const InputDecoration(
-                labelText: 'Notas / Observaciones',
-                border: OutlineInputBorder(),
+              decoration: _decoracionCampo(
+                'Notas / Observaciones',
+                Icons.notes,
               ),
             ),
             const SizedBox(height: 16),
@@ -1021,6 +1114,10 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E2265),
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 1,
                 ),
               ),
             ),
@@ -1056,11 +1153,24 @@ class _OperadorScreenState extends State<OperadorScreen> {
                           _idRegistroEditando == h['id']?.toString();
 
                       return Card(
+                        elevation: 0,
                         color: estaEditando
                             ? Colors.yellow.shade100
                             : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: estaEditando
+                                ? Colors.amber.shade300
+                                : const Color(0xFFE2E0E6),
+                          ),
+                        ),
                         child: ListTile(
                           onTap: () => _cargarRegistroParaEditar(h),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           title: Text(
                             'Fecha: ${h['fecha']}',
                             style: const TextStyle(fontWeight: FontWeight.bold),

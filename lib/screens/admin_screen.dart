@@ -284,18 +284,28 @@ class _AdminScreenState extends State<AdminScreen> {
     final ranking = _rankingOperadores();
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 1,
+      color: const Color(0xFFFAFAFD),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFE2E0E6)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Ranking',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            const Row(
+              children: [
+                Icon(Icons.leaderboard, color: Color(0xFF1E2265), size: 22),
+                SizedBox(width: 8),
+                Text(
+                  'Ranking',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (ranking.isEmpty)
               const Text(
                 'Sin registros filtrados.',
@@ -303,32 +313,118 @@ class _AdminScreenState extends State<AdminScreen> {
               )
             else
               Expanded(
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    headingRowHeight: 34,
-                    dataRowMinHeight: 40,
-                    dataRowMaxHeight: 46,
-                    columnSpacing: 14,
-                    columns: const [
-                      DataColumn(label: Text('Operador')),
-                      DataColumn(label: Text('Mts')),
-                      DataColumn(label: Text('%')),
-                    ],
-                    rows: ranking.map((item) {
-                      final nombre = item['nombre']?.toString() ?? 'N/A';
-                      final turno = item['turno']?.toString() ?? '-';
-                      final total = item['total'] as double;
-                      final porcentaje = item['porcentaje'] as double;
+                child: ListView.separated(
+                  itemCount: ranking.length,
+                  separatorBuilder: (_, index) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = ranking[index];
+                    final nombre = item['nombre']?.toString() ?? 'N/A';
+                    final turno = item['turno']?.toString() ?? '-';
+                    final total = item['total'] as double;
+                    final porcentaje = item['porcentaje'] as double;
+                    final progreso = (porcentaje / 100).clamp(0.0, 1.0);
+                    final colorPorcentaje = porcentaje >= 80
+                        ? Colors.green
+                        : porcentaje >= 70
+                        ? Colors.amber.shade700
+                        : Colors.redAccent;
 
-                      return DataRow(
-                        cells: [
-                          DataCell(Text('$nombre\nT$turno')),
-                          DataCell(Text(total.toStringAsFixed(0))),
-                          DataCell(Text('${porcentaje.toStringAsFixed(1)}%')),
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE7E6F0)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: const Color(0xFF1E2265),
+                            foregroundColor: Colors.white,
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  nombre,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDBDBF0),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Turno $turno',
+                                        style: const TextStyle(
+                                          color: Color(0xFF1E2265),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${total.toStringAsFixed(0)} mts',
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: LinearProgressIndicator(
+                                    value: progreso,
+                                    minHeight: 7,
+                                    backgroundColor: const Color(0xFFEDECF4),
+                                    color: colorPorcentaje,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${porcentaje.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: colorPorcentaje,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
           ],
@@ -374,7 +470,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        SizedBox(width: 360, child: _buildRankingOperadores()),
+        SizedBox(width: 420, child: _buildRankingOperadores()),
       ],
     );
   }
