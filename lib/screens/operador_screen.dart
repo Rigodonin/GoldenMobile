@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/calculadora_produccion.dart';
 
@@ -1057,16 +1058,18 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[0],
-                    decoration: _decoracionCampo('Telar #1 (m)', Icons.speed),//prueba de commit
+                    decoration: _decoracionCampo('Metros A (m)', Icons.speed),//prueba de commit
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[1],
-                    decoration: _decoracionCampo('Telar #2 (m)', Icons.speed),
+                    decoration: _decoracionCampo('Metros B (m)', Icons.speed),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
               ],
@@ -1077,16 +1080,18 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[2],
-                    decoration: _decoracionCampo('Telar #3 (m)', Icons.speed),
+                    decoration: _decoracionCampo('Metros C (m)', Icons.speed),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[3],
-                    decoration: _decoracionCampo('Telar #4 (m)', Icons.speed),
+                    decoration: _decoracionCampo('Metros D (m)', Icons.speed),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
               ],
