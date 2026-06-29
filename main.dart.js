@@ -29602,7 +29602,7 @@ $S:2}
 A.azm.prototype={
 $1(a){var s=A.ds().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/a4ce257c68517c1410f4b48ac9852ab5642a3f8d/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/a10d8ac38de835021c8d2f920dbf50a920ccc030/":s)+a},
 $S:87}
 A.Lg.prototype={
 a_k(){var s=this.ahT(),r=$.bo.bK().ImageFilter.MakeColorFilter(s,null)
@@ -45825,11 +45825,11 @@ q=A.dp(8)
 q=A.yW(new A.bp(B.fn,A.cY(A.b([A.dx(A.b([A.fC(j,B.IS,B.v,j,new A.d5(B.dY,j,j,A.dp(8),j,j,B.ax),j,42,j,j,j,j,42),B.eA,A.dq(A.b4("Tu Meta Es De: "+B.d.a9(k.x,0)+"m",j,j,j,B.hi,j,j,j),1)],r),B.N,B.y,B.G,0),B.B1,k.PU(k.w,B.ae,k.x,"Progreso de quincena"),B.cK,k.PU(k.w,B.ee,k.y,"Ritmo actual")],r),B.N,B.y,B.G),j),B.kk,1,new A.cl(q,B.hz))
 p=k.e
 o=p[0]
-n=k.uO("Metros A (m)",B.ft)
+n=k.uO("Primer Maquina",B.ft)
 m=$.aN0()
 l=t.VS
-n=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),o,j,j,j,j,j,2,n,B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[1],j,j,j,j,j,2,k.uO("Metros B (m)",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
-l=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[2],j,j,j,j,j,2,k.uO("Metros C (m)",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[3],j,j,j,j,j,2,k.uO("Metros D (m)",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
+n=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),o,j,j,j,j,j,2,n,B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[1],j,j,j,j,j,2,k.uO("Segunda Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
+l=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[2],j,j,j,j,j,2,k.uO("Tercera Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[3],j,j,j,j,j,2,k.uO("Cuarta Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
 m=A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),k.d,j,j,j,j,j,2,k.uO("Notas / Observaciones",B.Iv),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,j,j,j,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j)
 r=A.b([q,B.eB,n,B.mE,l,B.mE,m,B.eB,A.cW(A.a5G(B.pH,A.b4(k.Q==null?"Guardar Producci\xf3n del D\xeda":"Actualizar Registro",j,j,j,j,j,j,j),k.gadR(),A.A5(j,j,B.ae,j,j,j,1,j,j,B.k,j,j,j,j,new A.cl(A.dp(8),B.n),j,j,j,j,j)),48,1/0)],r)
 if(k.Q!=null)r.push(A.vW(B.YQ,k.gait(),j))
