@@ -1058,7 +1058,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[0],
-                    decoration: _decoracionCampo('Metros A (m)', Icons.speed),//prueba de commit
+                    decoration: _decoracionCampo('Primer Maquina', Icons.speed),//prueba de commit
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
@@ -1067,7 +1067,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[1],
-                    decoration: _decoracionCampo('Metros B (m)', Icons.speed),
+                    decoration: _decoracionCampo('Segunda Maquina', Icons.speed),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
@@ -1080,7 +1080,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[2],
-                    decoration: _decoracionCampo('Metros C (m)', Icons.speed),
+                    decoration: _decoracionCampo('Tercera Maquina', Icons.speed),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
@@ -1089,7 +1089,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _telarControllers[3],
-                    decoration: _decoracionCampo('Metros D (m)', Icons.speed),
+                    decoration: _decoracionCampo('Cuarta Maquina', Icons.speed),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
