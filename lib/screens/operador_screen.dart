@@ -32,6 +32,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
   bool _isLoadingRanking = false;
   String _turnoFiltroRanking = 'Todos';
   String _periodoFiltroRanking = 'actual';
+  int _porcentajeMetaSeleccionado = 80;
 
   int? _diasLVManuales;
   int? _diasSabadoManuales;
@@ -366,7 +367,76 @@ class _OperadorScreenState extends State<OperadorScreen> {
 
   double _calcularPorcentaje(double avance, double meta) {
     if (meta <= 0) return 0;
-    return (avance / meta).clamp(0.0, 1.0);
+    return avance / meta;
+  }
+
+  List<double> _metasDiasLaboralesQuincena() {
+    final rango = CalculadoraProduccion.obtenerRangoQuincenaActual();
+    var dia = rango['inicio']!;
+    final fin = rango['fin']!;
+    final metas = <double>[];
+
+    while (!dia.isAfter(fin)) {
+      final metaDia = CalculadoraProduccion.calcularMetaDiariaMetros(
+        _turnoLaboral,
+        dia,
+      );
+      if (metaDia > 0) metas.add(metaDia);
+      dia = dia.add(const Duration(days: 1));
+    }
+
+    return metas;
+  }
+
+  int? _siguienteNumeroRegistroQuincena() {
+    final totalDiasLaborales = _metasDiasLaboralesQuincena().length;
+    final registrosActuales = _historialQuincena.length;
+
+    if (registrosActuales >= totalDiasLaborales) return null;
+    return registrosActuales + 1;
+  }
+
+  double _calcularMetaAcumuladaPorRegistros(int cantidadRegistros) {
+    final metas = _metasDiasLaboralesQuincena();
+    final limite = cantidadRegistros.clamp(0, metas.length);
+
+    double meta = 0;
+    for (var i = 0; i < limite; i++) {
+      meta += metas[i];
+    }
+
+    return meta;
+  }
+
+  int _registrosParaCalculoMetaSeleccionada() {
+    final totalDiasLaborales = _metasDiasLaboralesQuincena().length;
+    final siguienteRegistro = _siguienteNumeroRegistroQuincena();
+
+    if (totalDiasLaborales == 0) return 0;
+    return siguienteRegistro ?? totalDiasLaborales;
+  }
+
+  double _metaObjetivoSeleccionada() {
+    final registrosParaCalculo = _registrosParaCalculoMetaSeleccionada();
+    if (registrosParaCalculo == 0) return 0;
+
+    final metaAcumulada = _calcularMetaAcumuladaPorRegistros(
+      registrosParaCalculo,
+    );
+    return metaAcumulada * (_porcentajeMetaSeleccionado / 100);
+  }
+
+  double _diferenciaMetaSeleccionada() {
+    return _metaObjetivoSeleccionada() - _metrosTotalesQuincena;
+  }
+
+  double _metrosNecesariosParaMetaSeleccionada() {
+    final diferencia = _diferenciaMetaSeleccionada();
+    return diferencia < 0 ? 0 : diferencia;
+  }
+
+  double _metrosNecesariosPorMaquina() {
+    return _metrosNecesariosParaMetaSeleccionada() / 4;
   }
 
   Color _colorPorcentaje(double porcentaje) {
@@ -407,6 +477,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
     required Color color,
   }) {
     final porcentaje = _calcularPorcentaje(avance, meta);
+    final progresoBarra = porcentaje.clamp(0.0, 1.0);
     final porcentajeTexto = (porcentaje * 100).round().toString();
 
     return Column(
@@ -426,7 +497,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
-            value: porcentaje,
+            value: progresoBarra,
             minHeight: 11,
             backgroundColor: const Color(0xFFEDECF4),
             color: color,
@@ -438,6 +509,57 @@ class _OperadorScreenState extends State<OperadorScreen> {
           style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
+    );
+  }
+
+  Widget _buildCalculadoraMetaDeseada() {
+    final registrosParaCalculo = _registrosParaCalculoMetaSeleccionada();
+    final diferencia = _diferenciaMetaSeleccionada();
+    final metrosNecesarios = _metrosNecesariosParaMetaSeleccionada();
+    final metrosPorMaquina = _metrosNecesariosPorMaquina();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E0E6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<int>(
+            initialValue: _porcentajeMetaSeleccionado,
+            decoration: _decoracionCampo('Meta deseada', Icons.track_changes),
+            items: const [70, 80, 90, 100]
+                .map(
+                  (porcentaje) => DropdownMenuItem<int>(
+                    value: porcentaje,
+                    child: Text('$porcentaje%'),
+                  ),
+                )
+                .toList(),
+            onChanged: (valor) {
+              if (valor == null) return;
+              setState(() => _porcentajeMetaSeleccionado = valor);
+            },
+          ),
+          const SizedBox(height: 10),
+          Text(
+            registrosParaCalculo == 0
+                ? 'No hay meta laboral para calcular este porcentaje.'
+                : diferencia < 0
+                    ? 'Ya superas el $_porcentajeMetaSeleccionado%; tu avance actual ya cubre ese porcentaje.'
+                    : 'Para quedar en el $_porcentajeMetaSeleccionado% necesitas hacer ${_metrosEnteros(metrosPorMaquina)}m por maquina, ${_metrosEnteros(metrosNecesarios)}m entre las 4.',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E2265),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1048,6 +1170,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
                       meta: _metaRitmoActual,
                       color: Colors.green,
                     ),
+                    const SizedBox(height: 12),
+                    _buildCalculadoraMetaDeseada(),
                   ],
                 ),
               ),
