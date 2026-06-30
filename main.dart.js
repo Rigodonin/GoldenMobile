@@ -45830,7 +45830,7 @@ m=$.aN0()
 l=t.VS
 n=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),o,j,j,j,j,j,2,n,B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[1],j,j,j,j,j,2,k.uO("Segunda Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
 l=A.dx(A.b([A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[2],j,j,j,j,j,2,k.uO("Tercera Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1),B.cu,A.dq(A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),p[3],j,j,j,j,j,2,k.uO("Cuarta Maquina",B.ft),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,A.b([m],l),j,B.dA,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j),1)],r),B.N,B.y,B.G,0)
-m=A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),k.d,j,j,j,j,j,2,k.uO("Notas / Observaciones",B.Iv),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,j,j,j,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j)
+m=A.hS(j,B.aZ,!1,j,!0,B.u,j,A.iR(),k.d,j,j,j,j,j,2,k.uO("Notas / Observaciones (opcional)",B.Iv),B.Q,!0,j,!0,j,!1,j,B.aS,j,j,j,j,j,j,j,j,1,j,j,!1,"\u2022",j,j,j,j,j,!1,j,j,!1,j,!0,j,B.bn,j,j,j,j,j,j,j,j,j,j,j,j,!0,B.a8,j,B.br,j,j,j,j)
 r=A.b([q,B.eB,n,B.mE,l,B.mE,m,B.eB,A.cW(A.a5G(B.pH,A.b4(k.Q==null?"Guardar Producci\xf3n del D\xeda":"Actualizar Registro",j,j,j,j,j,j,j),k.gadR(),A.A5(j,j,B.ae,j,j,j,1,j,j,B.k,j,j,j,j,new A.cl(A.dp(8),B.n),j,j,j,j,j)),48,1/0)],r)
 if(k.Q!=null)r.push(A.vW(B.YQ,k.gait(),j))
 r.push(B.H6)
