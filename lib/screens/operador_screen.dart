@@ -1100,7 +1100,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
             TextField(
               controller: _notasController,
               decoration: _decoracionCampo(
-                'Notas / Observaciones',
+                'Notas / Observaciones (opcional)',
                 Icons.notes,
               ),
             ),
