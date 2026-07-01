@@ -82,11 +82,70 @@ class _OperadorScreenState extends State<OperadorScreen> {
     }
   }
 
+  bool _esTurnoNoche() => _turnoLaboral == 'C';
+
+  DateTime _fechaOperativaQuincena() {
+    final ahora = DateTime.now();
+    if (_esTurnoNoche() && ahora.hour < 12) {
+      return ahora.subtract(const Duration(days: 1));
+    }
+    return ahora;
+  }
+
+  Map<String, DateTime> _rangoQuincenaParaFecha(DateTime fecha) {
+    if (fecha.day <= 15) {
+      return {
+        'inicio': DateTime(fecha.year, fecha.month, 1),
+        'fin': DateTime(fecha.year, fecha.month, 15),
+      };
+    }
+
+    return {
+      'inicio': DateTime(fecha.year, fecha.month, 16),
+      'fin': DateTime(fecha.year, fecha.month + 1, 0),
+    };
+  }
+
+  Map<String, DateTime> _obtenerRangoQuincenaOperador() {
+    return _rangoQuincenaParaFecha(_fechaOperativaQuincena());
+  }
+
+  double _calcularMetaQuincenaOperador() {
+    final rango = _obtenerRangoQuincenaOperador();
+    double metaTotal = 0;
+    var dia = rango['inicio']!;
+
+    while (!dia.isAfter(rango['fin']!)) {
+      metaTotal += CalculadoraProduccion.calcularMetaDiariaMetros(
+        _turnoLaboral,
+        dia,
+      );
+      dia = dia.add(const Duration(days: 1));
+    }
+
+    final horasLV = _turnoLaboral == 'C' ? 9.0 : 7.5;
+    final horasSab = _turnoLaboral == 'A'
+        ? 7.5
+        : (_turnoLaboral == 'B' ? 5.5 : 0.0);
+
+    if (_diasLVManuales != null && _diasLVManuales! > 0) {
+      metaTotal -=
+          (CalculadoraProduccion.metaPorHora * 4 * horasLV) * _diasLVManuales!;
+    }
+
+    if (_diasSabadoManuales != null && _diasSabadoManuales! > 0) {
+      metaTotal -= (CalculadoraProduccion.metaPorHora * 4 * horasSab) *
+          _diasSabadoManuales!;
+    }
+
+    return metaTotal < 0 ? 0 : metaTotal;
+  }
+
   Future<void> _cargarHistorial() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    final rangos = CalculadoraProduccion.obtenerRangoQuincenaActual();
+    final rangos = _obtenerRangoQuincenaOperador();
     final inicio =
         "${rangos['inicio']!.year}-${rangos['inicio']!.month.toString().padLeft(2, '0')}-${rangos['inicio']!.day.toString().padLeft(2, '0')}";
     final fin =
@@ -272,20 +331,8 @@ class _OperadorScreenState extends State<OperadorScreen> {
   }
 
   Map<String, DateTime> _obtenerRangoQuincenaAnterior() {
-    final hoy = DateTime.now();
-
-    if (hoy.day <= 15) {
-      final mesAnterior = DateTime(hoy.year, hoy.month, 0);
-      return {
-        'inicio': DateTime(mesAnterior.year, mesAnterior.month, 16),
-        'fin': mesAnterior,
-      };
-    }
-
-    return {
-      'inicio': DateTime(hoy.year, hoy.month, 1),
-      'fin': DateTime(hoy.year, hoy.month, 15),
-    };
+    final rangoActual = _obtenerRangoQuincenaOperador();
+    return _quincenaAnteriorA(rangoActual['inicio']!);
   }
 
   Future<void> _archivarQuincenaAnteriorSiHaceFalta(String operadorId) async {
@@ -354,11 +401,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
       );
     }
 
-    double metaTotal = CalculadoraProduccion.calcularMetaQuincenalMetros(
-      _turnoLaboral,
-      diasAsuetoLV: _diasLVManuales,
-      diasAsuetoSabado: _diasSabadoManuales,
-    );
+    double metaTotal = _calcularMetaQuincenaOperador();
     setState(() {
       _metaRitmoActual = metaRitmo;
       _metaQuincenaTotal = metaTotal;
@@ -371,7 +414,7 @@ class _OperadorScreenState extends State<OperadorScreen> {
   }
 
   List<double> _metasDiasLaboralesQuincena() {
-    final rango = CalculadoraProduccion.obtenerRangoQuincenaActual();
+    final rango = _obtenerRangoQuincenaOperador();
     var dia = rango['inicio']!;
     final fin = rango['fin']!;
     final metas = <double>[];
